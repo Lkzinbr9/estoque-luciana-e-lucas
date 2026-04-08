@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>CJ Tech - Produtos</title>
+
+<style>
+body{background:#0f172a;color:#fff;font-family:Arial;}
+.container{width:90%;margin:auto;}
+.card{background:#1e293b;padding:20px;border-radius:12px;margin:20px 0;}
+input{
+width:100%;padding:10px;margin:5px 0;border-radius:8px;border:none;
+background:#0f172a;color:#fff;
+}
+button{padding:10px;border:none;border-radius:8px;cursor:pointer;}
+.btn-primary{background:#22c55e;}
+.btn-warning{background:#3b82f6;}
+.btn-danger{background:#ef4444;}
+table{width:100%;margin-top:10px;border-collapse:collapse;}
+th,td{padding:10px;border-bottom:1px solid #334155;}
+img{width:60px;height:60px;border-radius:8px;object-fit:cover;cursor:pointer;}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<h1>📦 CJ Tech</h1>
+
+<div class="card">
+<h2 id="titulo">Cadastrar Produto</h2>
+
+<form id="form">
+
+<input type="hidden" id="id">
+
+<label>Nome</label>
+<input type="text" id="nome" required>
+
+<label>Categoria</label>
+<input type="text" id="categoria" required>
+
+<label>Imagem</label>
+<input type="file" id="imagem" accept="image/*">
+
+<label>Valor de Custo</label>
+<input type="number" id="custo" required>
+
+<label>Valor de Venda</label>
+<input type="number" id="venda" required>
+
+<br>
+<button class="btn-primary">Salvar</button>
+
+</form>
+</div>
+
+<div class="card">
+
+<input type="text" id="pesquisa" placeholder="🔎 Buscar por produto ou categoria">
+
+<table>
+<thead>
+<tr>
+<th>Img</th>
+<th>Nome</th>
+<th>Categoria</th>
+<th>Custo</th>
+<th>Venda</th>
+<th>Lucro</th>
+<th>Ações</th>
+</tr>
+</thead>
+
+<tbody id="lista"></tbody>
+
+</table>
+
+</div>
+
+</div>
+
+<!-- MODAL -->
+<div id="modalImg" style="
+display:none;
+position:fixed;
+top:0;
+left:0;
+width:100%;
+height:100%;
+background:rgba(0,0,0,0.95);
+justify-content:center;
+align-items:center;
+flex-direction:column;
+z-index:999;
+text-align:center;
+color:white;
+padding:20px;
+">
+
+<span onclick="fecharImagem()" style="
+position:absolute;
+top:20px;
+right:30px;
+font-size:40px;
+cursor:pointer;
+">&times;</span>
+
+<img id="imgGrande" style="
+max-width:90%;
+max-height:70%;
+border-radius:12px;
+margin-bottom:20px;
+">
+
+<h2 id="nomeProduto"></h2>
+<p id="precoProduto" style="font-size:20px;color:#22c55e;"></p>
+
+</div>
+
+<script>
+
+let produtos = JSON.parse(localStorage.getItem("produtos")) || [];
+let imagemBase64 = "";
+
+const inputImagem = document.getElementById("imagem");
+
+// converter imagem
+inputImagem.addEventListener("change", function(){
+    let file = this.files[0];
+    if(file){
+        let reader = new FileReader();
+        reader.onload = function(e){
+            imagemBase64 = e.target.result;
+        }
+        reader.readAsDataURL(file);
+    }
+});
+
+function salvar(){
+    localStorage.setItem("produtos", JSON.stringify(produtos));
+}
+
+function renderizar(){
+    let lista = document.getElementById("lista");
+    let pesquisa = document.getElementById("pesquisa").value.toLowerCase();
+
+    lista.innerHTML = "";
+
+    produtos.filter(p =>
+        p.nome.toLowerCase().includes(pesquisa) ||
+        p.categoria.toLowerCase().includes(pesquisa)
+    ).forEach(p => {
+
+        let lucro = p.venda - p.custo;
+
+        lista.innerHTML += `
+        <tr>
+            <td>
+                ${p.imagem ? `<img src="${p.imagem}" onclick="abrirImagem('${p.imagem}','${p.nome}','${p.venda}')">` : '—'}
+            </td>
+            <td>${p.nome}</td>
+            <td>${p.categoria}</td>
+            <td>R$ ${p.custo}</td>
+            <td>R$ ${p.venda}</td>
+            <td>${lucro.toFixed(2)}</td>
+            <td>
+                <button class="btn-warning" onclick="editar(${p.id})">Editar</button>
+                <button class="btn-danger" onclick="excluir(${p.id})">Excluir</button>
+            </td>
+        </tr>
+        `;
+    });
+}
+
+document.getElementById("form").addEventListener("submit", function(e){
+    e.preventDefault();
+
+    let id = document.getElementById("id").value;
+
+    let produto = {
+        id: id ? Number(id) : Date.now(),
+        nome: nome.value,
+        categoria: categoria.value,
+        custo: parseFloat(custo.value),
+        venda: parseFloat(venda.value),
+        imagem: imagemBase64
+    };
+
+    if(id){
+        let index = produtos.findIndex(p => p.id == id);
+        produtos[index] = produto;
+    } else {
+        produtos.push(produto);
+    }
+
+    imagemBase64 = "";
+    this.reset();
+
+    salvar();
+    renderizar();
+});
+
+function editar(id){
+    let p = produtos.find(p => p.id == id);
+
+    document.getElementById("id").value = p.id;
+    nome.value = p.nome;
+    categoria.value = p.categoria;
+    custo.value = p.custo;
+    venda.value = p.venda;
+
+    imagemBase64 = p.imagem;
+
+    document.getElementById("titulo").innerText = "Editar Produto";
+}
+
+function excluir(id){
+    if(confirm("Excluir produto?")){
+        produtos = produtos.filter(p => p.id != id);
+        salvar();
+        renderizar();
+    }
+}
+
+function abrirImagem(src, nome, preco){
+    document.getElementById("modalImg").style.display = "flex";
+    document.getElementById("imgGrande").src = src;
+    document.getElementById("nomeProduto").innerText = nome;
+    document.getElementById("precoProduto").innerText = "R$ " + parseFloat(preco).toFixed(2);
+}
+
+function fecharImagem(){
+    document.getElementById("modalImg").style.display = "none";
+}
+
+document.getElementById("pesquisa").addEventListener("input", renderizar);
+
+renderizar();
+
+</script>
+
+</body>
+</html>
